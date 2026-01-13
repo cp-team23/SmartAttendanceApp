@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.SmartAttendance"
+        parent="Theme.MaterialComponents.Light.NoActionBar">
+    </style>
+</resources>
