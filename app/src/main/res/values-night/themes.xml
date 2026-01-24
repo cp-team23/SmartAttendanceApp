@@ -1,5 +1,10 @@
 <resources>
     <style name="Theme.SmartAttendance"
         parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/primary_blue</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+
+        <!-- Input focus color (THIS REMOVES PURPLE) -->
+        <item name="colorControlActivated">@color/primary_blue</item>
     </style>
 </resources>

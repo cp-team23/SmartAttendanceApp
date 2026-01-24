@@ -4,13 +4,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F6F7F7">
+    android:background="#DBE2EF">
 
     <!-- ===== Header with Profile ===== -->
     <LinearLayout
         android:id="@+id/headerHome"
         android:layout_width="0dp"
-        android:layout_height="200dp"
+        android:layout_height="150dp"
         android:background="#1B263B"
         android:orientation="vertical"
         android:paddingStart="24dp"
@@ -38,7 +38,7 @@
                 android:id="@+id/imgProfile"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
-                android:src="@android:drawable/sym_def_app_icon"
+                android:src="@drawable/profile_temp"
                 android:padding="4dp"
                 android:scaleType="centerCrop"
                 android:background="@android:color/white"
@@ -79,6 +79,7 @@
         app:layout_constraintTop_toBottomOf="@id/headerHome"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
+
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -149,5 +150,20 @@
                 app:backgroundTint="#1B263B"/>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigation"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        app:menu="@menu/bottom_nav_menu"
+        app:itemIconTint="@color/bottom_nav_color"
+        app:itemTextColor="@color/bottom_nav_color"
+        app:labelVisibilityMode="unlabeled"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:itemIconSize="30dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

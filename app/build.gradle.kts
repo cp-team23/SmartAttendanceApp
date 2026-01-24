@@ -39,6 +39,7 @@ dependencies {
 
     implementation("com.google.android.material:material:1.11.0")
     implementation(libs.androidx.core.ktx)
+    implementation("com.github.yalantis:ucrop:2.2.8")
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
