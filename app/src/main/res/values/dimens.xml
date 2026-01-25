@@ -2,4 +2,5 @@
 <resources>
     <dimen name="iconsize">24dp</dimen>
     <dimen name="profilecardmargin">8dp</dimen>
+    <dimen name="headerHeight">130dp</dimen>
 </resources>

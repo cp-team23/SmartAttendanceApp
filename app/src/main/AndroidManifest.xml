@@ -12,6 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SmartAttendance">
         <activity
+            android:name=".AttendanceHistoryActivity"
+            android:exported="false" />
+        <activity
             android:name=".ChangePasswordActivity"
             android:exported="false" />
         <activity
@@ -22,10 +25,9 @@
             android:exported="false" />
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
+            android:exported="false"
             android:screenOrientation="portrait"
-            android:theme="@style/UCropFixedTheme"
-            android:exported="false" />
-
+            android:theme="@style/UCropFixedTheme" />
         <activity
             android:name=".LoginActivity"
             android:exported="true">

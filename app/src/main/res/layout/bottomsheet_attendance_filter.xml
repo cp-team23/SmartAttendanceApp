@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#DBE2EF">
+
+    <!-- Drag Handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center"
+        android:background="#CCCCCC"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Filter Attendance"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#1B263B"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Month Spinner -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Month"
+        android:textStyle="bold"
+        android:textColor="#1B263B"/>
+
+    <Spinner
+        android:id="@+id/spinnerMonth"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="6dp"/>
+
+    <!-- Subject Spinner -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Subject"
+        android:textStyle="bold"
+        android:textColor="#1B263B"
+        android:layout_marginTop="12dp"/>
+
+    <Spinner
+        android:id="@+id/spinnerSubject"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="6dp"/>
+
+    <!-- Status Chips -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Status"
+        android:textStyle="bold"
+        android:textColor="#1B263B"
+        android:layout_marginTop="12dp"/>
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroupStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:singleSelection="true">
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipAll"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="All"
+            android:checkable="true"
+            android:checked="true"
+            app:checkedIconVisible="false"
+            android:textColor="@color/chip_text_selector"
+            app:chipBackgroundColor="@color/chip_bg_all"
+            app:chipStrokeColor="#1B263B"
+            app:chipStrokeWidth="1dp"/>
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipPresent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Present"
+            android:checkable="true"
+            android:textColor="@color/chip_text_selector"
+            app:chipBackgroundColor="@color/chip_bg_present"
+            app:chipStrokeColor="#4CAF50"
+            app:chipStrokeWidth="1dp"/>
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipAbsent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Absent"
+            android:checkable="true"
+            android:textColor="@color/chip_text_selector"
+            app:chipBackgroundColor="@color/chip_bg_absent"
+            app:chipStrokeColor="#F44336"
+            app:chipStrokeWidth="1dp"/>
+    </com.google.android.material.chip.ChipGroup>
+
+    <!-- Apply Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnApplyFilter"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Apply Filters"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:layout_marginTop="20dp"
+        app:backgroundTint="#1B263B"
+        app:cornerRadius="12dp"/>
+</LinearLayout>

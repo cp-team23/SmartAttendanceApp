@@ -29,8 +29,7 @@ class HomeActivity : AppCompatActivity() {
         }
 
         btnViewAttendance.setOnClickListener {
-            Toast.makeText(this, "Attendance history screen", Toast.LENGTH_SHORT).show()
-            // startActivity(Intent(this, AttendanceActivity::class.java))
+            startActivity(Intent(this, AttendanceHistoryActivity::class.java))
         }
 
         // ------------------ PROFILE CLICK ------------------

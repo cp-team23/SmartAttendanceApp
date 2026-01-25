@@ -10,7 +10,7 @@
     <LinearLayout
         android:id="@+id/headerHome"
         android:layout_width="0dp"
-        android:layout_height="150dp"
+        android:layout_height="@dimen/headerHeight"
         android:background="#1B263B"
         android:orientation="vertical"
         android:paddingStart="24dp"

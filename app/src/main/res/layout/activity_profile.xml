@@ -71,7 +71,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Harmit Patel"
-            android:textSize="18sp"
+            android:textSize="22sp"
             android:textStyle="bold"
             android:textColor="@android:color/white"
             android:layout_marginTop="12dp" />
@@ -81,7 +81,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Student ID : 11XXX111"
-            android:textSize="14sp"
+            android:textSize="18sp"
             android:textColor="@android:color/white"
             android:layout_marginTop="4dp" />
     </LinearLayout>
