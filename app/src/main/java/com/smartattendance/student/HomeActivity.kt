@@ -24,8 +24,7 @@ class HomeActivity : AppCompatActivity() {
 
         // ------------------ BUTTON ACTIONS ------------------
         btnMarkAttendance.setOnClickListener {
-            Toast.makeText(this, "QR Scan screen will open", Toast.LENGTH_SHORT).show()
-            // startActivity(Intent(this, QrScanActivity::class.java))
+            startActivity(Intent(this, QrScanActivity::class.java))
         }
 
         btnViewAttendance.setOnClickListener {
