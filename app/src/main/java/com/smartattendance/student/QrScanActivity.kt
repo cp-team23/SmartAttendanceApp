@@ -8,6 +8,8 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.ScaleGestureDetector
+import android.view.View
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
@@ -20,19 +22,21 @@ import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.smartattendance.student.adapters.QrAnalyzer
 import com.smartattendance.student.models.QrAttendancePayload
+import com.smartattendance.student.network.RetrofitClient
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.util.concurrent.atomic.AtomicBoolean
 
 class QrScanActivity : AppCompatActivity() {
 
     private lateinit var previewView: PreviewView
     private lateinit var cameraProvider: ProcessCameraProvider
-    private lateinit var camera: Camera   // 🔍 FOR ZOOM
+    private lateinit var camera: Camera
+    private lateinit var loadingOverlay: FrameLayout
 
     private val gson = Gson()
-
-    // 🔒 CRITICAL FLAGS
     private val hasHandledQr = AtomicBoolean(false)
-    private var lastQrText: String? = null
 
     companion object {
         private const val CAMERA_REQUEST_CODE = 101
@@ -43,124 +47,64 @@ class QrScanActivity : AppCompatActivity() {
         setContentView(R.layout.activity_qr_scan)
 
         previewView = findViewById(R.id.previewView)
+        loadingOverlay = findViewById(R.id.loadingOverlay)
 
         if (hasCameraPermission()) {
             startCamera()
         } else {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.CAMERA),
-                CAMERA_REQUEST_CODE
-            )
+            requestCameraPermission()
         }
 
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
-        bottomNav.menu.setGroupCheckable(0, false, true)
-
-        bottomNav.setOnItemSelectedListener { item ->
-            val options = ActivityOptions.makeCustomAnimation(this, 0, 0)
-            when (item.itemId) {
-                R.id.nav_home -> {
-                    startActivity(Intent(this, HomeActivity::class.java), options.toBundle())
-                    finish()
-                    true
-                }
-                R.id.nav_profile -> {
-                    startActivity(Intent(this, ProfileActivity::class.java), options.toBundle())
-                    finish()
-                    true
-                }
-                else -> false
-            }
-        }
-
+        setupBottomNavigation()
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        if (requestCode == CAMERA_REQUEST_CODE &&
-            grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
-            startCamera()
-        } else {
-            Toast.makeText(this, "Camera permission required", Toast.LENGTH_LONG).show()
-            finish()
-        }
-    }
+    // ================= CAMERA =================
 
     private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        val future = ProcessCameraProvider.getInstance(this)
 
-        cameraProviderFuture.addListener({
-            cameraProvider = cameraProviderFuture.get()
+        future.addListener({
+            cameraProvider = future.get()
 
             val preview = Preview.Builder().build().apply {
                 setSurfaceProvider(previewView.surfaceProvider)
             }
 
-            val imageAnalysis = ImageAnalysis.Builder()
+            val analysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
 
-            imageAnalysis.setAnalyzer(
+            analysis.setAnalyzer(
                 ContextCompat.getMainExecutor(this),
-                QrAnalyzer { qrText ->
-                    onQrDetected(qrText)
-                }
+                QrAnalyzer { onQrDetected(it) }
             )
 
             cameraProvider.unbindAll()
 
-            // 🔥 STORE CAMERA INSTANCE
             camera = cameraProvider.bindToLifecycle(
                 this,
                 CameraSelector.DEFAULT_BACK_CAMERA,
                 preview,
-                imageAnalysis
+                analysis
             )
 
-            setupPinchToZoom() // 🔍 ENABLE ZOOM
+            setupZoom()
 
         }, ContextCompat.getMainExecutor(this))
     }
 
-    // 🔍 PINCH TO ZOOM
-    private fun setupPinchToZoom() {
-        val scaleGestureDetector = ScaleGestureDetector(
-            this,
-            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-                override fun onScale(detector: ScaleGestureDetector): Boolean {
-                    val zoomState = camera.cameraInfo.zoomState.value ?: return false
-                    val newZoom = zoomState.zoomRatio * detector.scaleFactor
-                    camera.cameraControl.setZoomRatio(newZoom)
-                    return true
-                }
-            }
-        )
+    // ================= QR DETECT =================
 
-        previewView.setOnTouchListener { _, event ->
-            scaleGestureDetector.onTouchEvent(event)
-            true
-        }
-    }
-
-    // 🔒 Analyzer ONLY reports, does NOT navigate
     private fun onQrDetected(qrText: String) {
         if (hasHandledQr.get()) return
 
-        // HARD FILTER
-        if (!qrText.trim().startsWith("{")) return
-
-        lastQrText = qrText
-
-        // 🔥 HANDLE ONLY ONCE
         if (hasHandledQr.compareAndSet(false, true)) {
+
+            if (!qrText.trim().startsWith("{")) {
+                resetScanner("Invalid QR Code")
+                return
+            }
+
             processQr(qrText)
         }
     }
@@ -169,37 +113,104 @@ class QrScanActivity : AppCompatActivity() {
         try {
             val payload = gson.fromJson(qrText, QrAttendancePayload::class.java)
 
-            if (payload.attendanceId.isBlank() ||
-                payload.encryptedCode.isBlank() ||
-                payload.expireTime <= 0
+            if (payload.attendanceId.isBlank()
+                || payload.encryptedCode.isBlank()
+                || payload.expireTime <= 0
             ) {
                 resetScanner("Invalid QR Code")
                 return
             }
 
             if (System.currentTimeMillis() > payload.expireTime) {
-                resetScanner("QR Code Expired")
+                resetScanner("QR Expired")
                 return
             }
 
-            // ✅ STOP CAMERA ONLY NOW
-            cameraProvider.unbindAll()
-
-            // Simulate backend
-            Handler(Looper.getMainLooper()).postDelayed({
-                goToFaceVerification(payload)
-            }, 800)
+            verifyQrWithServer(payload)
 
         } catch (e: JsonSyntaxException) {
-            resetScanner("Invalid QR")
+            resetScanner("Invalid QR Code")
         }
     }
 
-    private fun resetScanner(msg: String) {
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-        hasHandledQr.set(false)
-        lastQrText = null
+    // ================= SERVER VERIFY =================
+
+    private fun verifyQrWithServer(payload: QrAttendancePayload) {
+
+        showLoading()
+
+        RetrofitClient.create(this)
+            .scanQrCode(payload)
+            .enqueue(object : Callback<Map<String, String>> {
+
+                override fun onResponse(
+                    call: Call<Map<String, String>>,
+                    response: Response<Map<String, String>>
+                ) {
+                    hideLoading()
+
+                    if (response.isSuccessful) {
+                        cameraProvider.unbindAll()
+                        goToFaceVerification(payload)
+                        return
+                    }
+
+                    val error = response.errorBody()?.string()
+
+                    when {
+                        error?.contains("QR_EXPIRED") == true ->
+                            showAndReset("QR expired")
+
+                        error?.contains("ATTENDANCE_ALREADY_MARKED") == true ->
+                            showAndReset("Attendance already marked")
+
+                        error?.contains("NOT_ALLOWED") == true ->
+                            showAndReset("Attendance not allowed")
+
+                        error?.contains("IMAGE_NOT_FOUND") == true ->
+                            showAndReset("Upload profile photo first")
+
+                        error?.contains("INVALID_QR_DATA") == true ->
+                            showAndReset("Invalid QR")
+
+                        else ->
+                            showAndReset("Verification failed")
+                    }
+                }
+
+                override fun onFailure(call: Call<Map<String, String>>, t: Throwable) {
+                    hideLoading()
+                    showAndReset("Server error")
+                }
+            })
     }
+
+    // ================= HELPERS =================
+
+    private fun showAndReset(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+        resetScanner()
+    }
+
+    private fun resetScanner(message: String? = null) {
+        message?.let {
+            Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+        }
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            hasHandledQr.set(false)
+        }, 1200)
+    }
+
+    private fun showLoading() {
+        loadingOverlay.visibility = View.VISIBLE
+    }
+
+    private fun hideLoading() {
+        loadingOverlay.visibility = View.GONE
+    }
+
+    // ================= NAVIGATION =================
 
     private fun goToFaceVerification(payload: QrAttendancePayload) {
         val intent = Intent(this, FaceVerificationActivity::class.java)
@@ -210,10 +221,62 @@ class QrScanActivity : AppCompatActivity() {
         finish()
     }
 
+    // ================= PERMISSION =================
+
     private fun hasCameraPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestCameraPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.CAMERA),
+            CAMERA_REQUEST_CODE
+        )
+    }
+
+    // ================= ZOOM =================
+
+    private fun setupZoom() {
+        val detector = ScaleGestureDetector(
+            this,
+            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    val zoom = camera.cameraInfo.zoomState.value ?: return false
+                    camera.cameraControl.setZoomRatio(zoom.zoomRatio * detector.scaleFactor)
+                    return true
+                }
+            }
+        )
+
+        previewView.setOnTouchListener { _, event ->
+            detector.onTouchEvent(event)
+            true
+        }
+    }
+
+    // ================= NAV BAR =================
+
+    private fun setupBottomNavigation() {
+        val nav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
+
+        nav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    startActivity(Intent(this, HomeActivity::class.java))
+                    finish()
+                    true
+                }
+                R.id.nav_profile -> {
+                    startActivity(Intent(this, ProfileActivity::class.java))
+                    finish()
+                    true
+                }
+                else -> false
+            }
+        }
     }
 }

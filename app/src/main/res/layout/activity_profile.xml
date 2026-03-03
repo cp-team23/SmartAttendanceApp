@@ -19,14 +19,12 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- ===== Profile Image with Edit Hint ===== -->
+        <!-- Profile Image -->
         <FrameLayout
-            android:layout_marginTop="10dp"
             android:layout_width="200dp"
-            android:layout_height="200dp">
+            android:layout_height="200dp"
+            android:layout_marginTop="10dp">
 
-
-            <!-- Profile Image -->
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/imgProfile"
                 android:layout_width="match_parent"
@@ -39,7 +37,6 @@
                 android:focusable="true"
                 app:shapeAppearanceOverlay="@style/CircleImageView" />
 
-
             <ImageView
                 android:id="@+id/tvPendingBadge"
                 android:layout_width="50dp"
@@ -50,9 +47,9 @@
                 android:padding="6dp"
                 android:src="@drawable/bg_pending_badge"
                 app:tint="@color/primary_blue"
-                android:visibility="gone"/>
+                android:visibility="gone"
+                android:contentDescription="Pending"/>
 
-            <!-- Camera / Edit Icon -->
             <ImageView
                 android:id="@+id/imgCameraIcon"
                 android:layout_width="50dp"
@@ -62,28 +59,28 @@
                 android:background="@drawable/bg_circle_primary"
                 android:padding="6dp"
                 android:src="@drawable/ic_menu_photo"
-                app:tint="@color/primary_blue" />
+                app:tint="@color/primary_blue"
+                android:contentDescription="Edit Photo"/>
         </FrameLayout>
-
 
         <TextView
             android:id="@+id/tvStudentName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Harmit Patel"
+            android:text="Student Name"
             android:textSize="22sp"
             android:textStyle="bold"
             android:textColor="@android:color/white"
-            android:layout_marginTop="12dp" />
+            android:layout_marginTop="12dp"/>
 
         <TextView
             android:id="@+id/tvStudentId"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Student ID : 11XXX111"
-            android:textSize="18sp"
+            android:text="Student ID"
+            android:textSize="16sp"
             android:textColor="@android:color/white"
-            android:layout_marginTop="4dp" />
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
 
     <!-- ===== Info Card ===== -->
@@ -114,158 +111,86 @@
                 android:textColor="#1B263B"
                 android:layout_marginBottom="12dp"/>
 
-            <!-- ROW : College Mail -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
+            <!-- College -->
+            <LinearLayout style="@style/profileRow">
+                <TextView style="@style/profileLabel" android:text="College"/>
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="College Mail "
-                    android:textStyle="bold"
-                    android:textSize="14sp"
-                    android:textColor="#1B263B"/>
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="name.id@college.in"
-                    android:textSize="14sp"
-                    android:textColor="#555555"
-                    android:layout_marginStart="12dp"/>
+                    android:id="@+id/tvCollege"
+                    style="@style/profileValue"/>
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginVertical="10dp"
-                android:background="#DDDDDD"/>
+            <View style="@style/profileDivider"/>
 
-            <!-- ROW : Department -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
+            <!-- Enrollment -->
+            <LinearLayout style="@style/profileRow">
+                <TextView style="@style/profileLabel" android:text="Enrollment No"/>
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Department"
-                    android:textStyle="bold"
-                    android:textSize="14sp"
-                    android:textColor="#1B263B"/>
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Computer Engineering"
-                    android:textSize="14sp"
-                    android:textColor="#555555"
-                    android:layout_marginStart="12dp"/>
+                    android:id="@+id/tvEnrollment"
+                    style="@style/profileValue"/>
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginVertical="10dp"
-                android:background="#DDDDDD"/>
+            <View style="@style/profileDivider"/>
 
-            <!-- ROW : Semester -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
+            <!-- College Mail -->
+            <LinearLayout style="@style/profileRow">
+                <TextView style="@style/profileLabel" android:text="College Mail"/>
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Semester"
-                    android:textStyle="bold"
-                    android:textSize="14sp"
-                    android:textColor="#1B263B"/>
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="V"
-                    android:textSize="14sp"
-                    android:textColor="#555555"
-                    android:layout_marginStart="12dp"/>
+                    android:id="@+id/tvEmail"
+                    style="@style/profileValue"/>
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginVertical="10dp"
-                android:background="#DDDDDD"/>
+            <View style="@style/profileDivider"/>
 
-            <!-- ROW : Class -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
+            <!-- Department -->
+            <LinearLayout style="@style/profileRow">
+                <TextView style="@style/profileLabel" android:text="Department"/>
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Class"
-                    android:textStyle="bold"
-                    android:textSize="14sp"
-                    android:textColor="#1B263B"/>
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="CE X"
-                    android:textSize="14sp"
-                    android:textColor="#555555"
-                    android:layout_marginStart="12dp"/>
+                    android:id="@+id/tvBranch"
+                    style="@style/profileValue"/>
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginVertical="10dp"
-                android:background="#DDDDDD"/>
+            <View style="@style/profileDivider"/>
 
-            <!-- ROW : Batch -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
+            <!-- Semester -->
+            <LinearLayout style="@style/profileRow">
+                <TextView style="@style/profileLabel" android:text="Semester"/>
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Batch"
-                    android:textStyle="bold"
-                    android:textSize="14sp"
-                    android:textColor="#1B263B"/>
+                    android:id="@+id/tvSemester"
+                    style="@style/profileValue"/>
+            </LinearLayout>
 
+            <View style="@style/profileDivider"/>
+
+            <!-- Year -->
+            <LinearLayout style="@style/profileRow">
+                <TextView style="@style/profileLabel" android:text="Year"/>
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="X1"
-                    android:textSize="14sp"
-                    android:textColor="#555555"
-                    android:layout_marginStart="12dp"/>
+                    android:id="@+id/tvYear"
+                    style="@style/profileValue"/>
+            </LinearLayout>
+
+            <View style="@style/profileDivider"/>
+
+            <!-- Class -->
+            <LinearLayout style="@style/profileRow">
+                <TextView style="@style/profileLabel" android:text="Class"/>
+                <TextView
+                    android:id="@+id/tvClass"
+                    style="@style/profileValue"/>
+            </LinearLayout>
+
+            <View style="@style/profileDivider"/>
+
+            <!-- Batch -->
+            <LinearLayout style="@style/profileRow">
+                <TextView style="@style/profileLabel" android:text="Batch"/>
+                <TextView
+                    android:id="@+id/tvBatch"
+                    style="@style/profileValue"/>
             </LinearLayout>
 
         </LinearLayout>
     </androidx.cardview.widget.CardView>
-
 
 
     <!-- ===== Center Buttons ===== -->
@@ -315,7 +240,6 @@
 
     </LinearLayout>
 
-
     <!-- ===== Bottom Navigation ===== -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNavigation"
@@ -330,4 +254,5 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

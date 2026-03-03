@@ -7,20 +7,32 @@ import android.os.Bundle
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.google.gson.Gson
+import com.smartattendance.student.models.ErrorResponse
+import com.smartattendance.student.models.LoginRequest
+import com.smartattendance.student.models.LoginResponse
+import com.smartattendance.student.network.RetrofitClient
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class LoginActivity : AppCompatActivity() {
+
+    private val gson = Gson()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ===== AUTO LOGIN CHECK =====
-        val prefs = getSharedPreferences("student_session", MODE_PRIVATE)
-        if (prefs.getBoolean("is_logged_in", false)) {
+        // ===== AUTO LOGIN CHECK (JWT BASED) =====
+        val prefs = getSharedPreferences("auth_prefs", MODE_PRIVATE)
+        val token = prefs.getString("jwt_token", null)
+        if (!token.isNullOrEmpty()) {
             startActivity(Intent(this, HomeActivity::class.java))
             finish()
             return
@@ -57,20 +69,9 @@ class LoginActivity : AppCompatActivity() {
                     tilPassword.error = "Password is required"
                 }
 
-                // Dummy credentials (API later)
-                studentId != "12345" || password != "123456" -> {
-                    tilPassword.error = "Invalid Student ID or Password"
-                }
-
                 else -> {
-                    prefs.edit()
-                        .putBoolean("is_logged_in", true)
-                        .putString("student_id", studentId)
-                        .putString("student_name", "Alex Harrison")
-                        .apply()
-
-                    startActivity(Intent(this, HomeActivity::class.java))
-                    finish()
+                    btnLogin.isEnabled = false
+                    loginWithBackend(studentId, password, btnLogin)
                 }
             }
         }
@@ -87,6 +88,89 @@ class LoginActivity : AppCompatActivity() {
                 putExtra(Intent.EXTRA_SUBJECT, "Smart Attendance - Login Help")
             }
             startActivity(intent)
+        }
+    }
+
+    // ================= BACKEND LOGIN =================
+
+    private fun loginWithBackend(
+        studentId: String,
+        password: String,
+        btnLogin: MaterialButton
+    ) {
+
+        val request = LoginRequest(
+            userId = studentId,
+            password = password
+        )
+
+        RetrofitClient.create(this).login(request)
+            .enqueue(object : Callback<LoginResponse> {
+
+                override fun onResponse(
+                    call: Call<LoginResponse>,
+                    response: Response<LoginResponse>
+                ) {
+                    btnLogin.isEnabled = true
+
+                    if (response.isSuccessful && response.body() != null) {
+
+                        val token = response.body()!!.token
+
+                        getSharedPreferences("auth_prefs", MODE_PRIVATE)
+                            .edit()
+                            .putString("jwt_token", token)
+                            .putString("student_id", studentId)
+                            .putString("student_name", "Alex Harrison")
+                            .apply()
+
+                        startActivity(Intent(this@LoginActivity, HomeActivity::class.java))
+                        finish()
+
+                    } else {
+                        handleLoginError(response)
+                    }
+                }
+
+                override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
+                    btnLogin.isEnabled = true
+                    Toast.makeText(
+                        this@LoginActivity,
+                        "Network error: ${t.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            })
+    }
+
+    // ================= ERROR HANDLING =================
+
+    private fun handleLoginError(response: Response<*>) {
+        try {
+            val errorJson = response.errorBody()?.string()
+            if (errorJson != null) {
+                val errorResponse = gson.fromJson(errorJson, ErrorResponse::class.java)
+
+                val message = when (errorResponse.error) {
+                    "USER_NOT_FOUND" ->
+                        "Student ID not found"
+
+                    "WRONG_PASSWORD" ->
+                        "Incorrect password"
+
+                    "TEMPORARY_BLOCKED" ->
+                        "Your account is temporarily blocked. Please try later."
+
+                    else ->
+                        "Login failed. Please try again."
+                }
+
+                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Login failed", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Unexpected error occurred", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -119,7 +203,6 @@ class LoginActivity : AppCompatActivity() {
 
             btnSend.isEnabled = false
 
-            // 🔁 Dummy backend call
             val success = fakeForgotPasswordApi(input)
 
             tvResult.visibility = View.VISIBLE
@@ -141,15 +224,12 @@ class LoginActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    // ===== DUMMY BACKEND (BOOLEAN, BACKEND READY) =====
+    // ===== DUMMY FORGOT PASSWORD BACKEND =====
     private fun fakeForgotPasswordApi(identifier: String): Boolean {
-
-        // Replace with API later
         val validUsers = listOf(
             "12345",
             "student@college.edu"
         )
-
         return validUsers.contains(identifier.lowercase())
     }
 }

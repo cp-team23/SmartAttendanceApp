@@ -1,4 +1,5 @@
 package com.smartattendance.student.models
 
-class LoginResponse {
-}
+data class LoginResponse(
+    val token: String
+)

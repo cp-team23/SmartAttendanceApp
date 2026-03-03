@@ -1,4 +1,5 @@
 package com.smartattendance.student.models
 
-class ErrorResponse {
-}
+data class ErrorResponse(
+    val error: String
+)

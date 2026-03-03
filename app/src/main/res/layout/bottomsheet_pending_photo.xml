@@ -1,19 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:padding="20dp"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:background="#DBE2EF">
 
-    <!-- Drag Handle (optional but nice) -->
+    <!-- Drag Handle -->
     <View
-        android:layout_width="40dp"
+        android:layout_width="44dp"
         android:layout_height="4dp"
         android:layout_gravity="center"
-        android:background="#CCCCCC"
-        android:layout_marginBottom="16dp"/>
+        android:background="#B0B0B0"
+        android:layout_marginBottom="20dp"/>
 
-    <!-- Image Preview -->
+    <!-- Image -->
     <ImageView
         android:id="@+id/imgPreview"
         android:layout_width="120dp"
@@ -22,36 +24,53 @@
         android:scaleType="centerCrop"
         android:background="@android:color/darker_gray"/>
 
-    <!-- Status Text -->
+    <!-- Status -->
     <TextView
-        android:layout_marginTop="12dp"
-        android:text="Profile photo is under admin review"
-        android:textSize="14sp"
+        android:layout_marginTop="16dp"
+        android:text="Your profile photo is under admin review"
+        android:textSize="15sp"
         android:textStyle="bold"
+        android:textColor="#1B263B"
         android:gravity="center"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <!-- Cancel Change -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnCancelChange"
-        android:layout_marginTop="16dp"
-        android:text="Cancel Change"
+    <TextView
+        android:text="You will be notified once the review is completed"
+        android:textSize="13sp"
+        android:textColor="#6B7280"
+        android:gravity="center"
+        android:layout_marginTop="6dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <!-- Re-upload -->
+    <!-- Primary Action -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnReupload"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="24dp"
         android:text="Re-upload Photo"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="52dp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        app:backgroundTint="#1B263B"
+        app:cornerRadius="14dp"/>
 
-    <!-- Close -->
+    <!-- Secondary -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCancelChange"
+        android:layout_marginTop="12dp"
+        android:text="Cancel Change"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        app:backgroundTint="#1B263B"
+        app:cornerRadius="14dp"/>
+
     <TextView
         android:id="@+id/btnClose"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="16dp"
         android:text="Close"
         android:textColor="#1B263B"
         android:gravity="center"

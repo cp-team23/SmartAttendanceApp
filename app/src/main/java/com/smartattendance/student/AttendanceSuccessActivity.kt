@@ -6,6 +6,9 @@ import android.os.Bundle
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class AttendanceSuccessActivity : AppCompatActivity() {
 
@@ -17,15 +20,15 @@ class AttendanceSuccessActivity : AppCompatActivity() {
         val tvDetails = findViewById<TextView>(R.id.tvAttendanceDetails)
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
 
-        // Optional data from intent (future backend use)
-        val subject = intent.getStringExtra("subject") ?: "Attendance Recorded"
-        val time = intent.getStringExtra("time")
+        // Data from intent
+        val subject = intent.getStringExtra("subject") ?: "Attendance"
+        val dateFromIntent = intent.getStringExtra("date")
 
-        tvDetails.text = if (time != null) {
-            "$subject • $time"
-        } else {
-            subject
-        }
+        // Fallback: current date if not passed
+        val displayDate = dateFromIntent ?: getCurrentDate()
+
+        // Set subject + date
+        tvDetails.text = "$subject • $displayDate"
 
         // Bottom Navigation handling
         bottomNav.menu.setGroupCheckable(0, false, true)
@@ -46,5 +49,10 @@ class AttendanceSuccessActivity : AppCompatActivity() {
                 else -> false
             }
         }
+    }
+
+    private fun getCurrentDate(): String {
+        val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        return sdf.format(Date())
     }
 }

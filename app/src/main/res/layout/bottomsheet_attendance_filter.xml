@@ -10,29 +10,29 @@
 
     <!-- Drag Handle -->
     <View
-        android:layout_width="40dp"
+        android:layout_width="44dp"
         android:layout_height="4dp"
         android:layout_gravity="center"
-        android:background="#CCCCCC"
-        android:layout_marginBottom="16dp"/>
+        android:background="#B0B0B0"
+        android:layout_marginBottom="20dp"/>
 
     <!-- Title -->
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:text="Filter Attendance"
-        android:textSize="18sp"
+        android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="#1B263B"
-        android:layout_marginBottom="16dp"/>
-
-    <!-- Month Spinner -->
-    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"/>
+
+    <!-- Month -->
+    <TextView
         android:text="Month"
         android:textStyle="bold"
-        android:textColor="#1B263B"/>
+        android:textColor="#1B263B"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
 
     <Spinner
         android:id="@+id/spinnerMonth"
@@ -40,14 +40,14 @@
         android:layout_height="48dp"
         android:layout_marginTop="6dp"/>
 
-    <!-- Subject Spinner -->
+    <!-- Subject -->
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:text="Subject"
         android:textStyle="bold"
         android:textColor="#1B263B"
-        android:layout_marginTop="12dp"/>
+        android:layout_marginTop="16dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
 
     <Spinner
         android:id="@+id/spinnerSubject"
@@ -55,14 +55,14 @@
         android:layout_height="48dp"
         android:layout_marginTop="6dp"/>
 
-    <!-- Status Chips -->
+    <!-- Status -->
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:text="Status"
         android:textStyle="bold"
         android:textColor="#1B263B"
-        android:layout_marginTop="12dp"/>
+        android:layout_marginTop="16dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
 
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/chipGroupStatus"
@@ -73,9 +73,9 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipAll"
+            android:text="All"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="All"
             android:checkable="true"
             android:checked="true"
             app:checkedIconVisible="false"
@@ -86,10 +86,10 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipPresent"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
             android:text="Present"
             android:checkable="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:textColor="@color/chip_text_selector"
             app:chipBackgroundColor="@color/chip_bg_present"
             app:chipStrokeColor="#4CAF50"
@@ -97,25 +97,25 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipAbsent"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
             android:text="Absent"
             android:checkable="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:textColor="@color/chip_text_selector"
             app:chipBackgroundColor="@color/chip_bg_absent"
             app:chipStrokeColor="#F44336"
             app:chipStrokeWidth="1dp"/>
     </com.google.android.material.chip.ChipGroup>
 
-    <!-- Apply Button -->
+    <!-- Primary Action -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnApplyFilter"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="52dp"
         android:text="Apply Filters"
         android:textStyle="bold"
         android:textColor="@android:color/white"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="24dp"
         app:backgroundTint="#1B263B"
-        app:cornerRadius="12dp"/>
+        app:cornerRadius="14dp"/>
 </LinearLayout>
