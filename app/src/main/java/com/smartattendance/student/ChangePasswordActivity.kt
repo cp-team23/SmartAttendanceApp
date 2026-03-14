@@ -6,8 +6,11 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.smartattendance.student.models.ChangePasswordRequest
+import com.smartattendance.student.network.RetrofitClient
 
 class ChangePasswordActivity : AppCompatActivity() {
 
@@ -66,8 +69,106 @@ class ChangePasswordActivity : AppCompatActivity() {
                 confirmPass.isEmpty() -> tilConfirm.error = "Please confirm password"
                 newPass != confirmPass -> tilConfirm.error = "Passwords do not match"
                 else -> {
-                    // Backend will be added later
-                    finish()
+
+                    btnUpdate.isEnabled = false
+                    btnUpdate.text = "Updating..."
+
+                    val request = ChangePasswordRequest(
+                        password = oldPass,
+                        newPassword = newPass,
+                        confirmPassword = confirmPass
+                    )
+
+                    RetrofitClient.create(this)
+                        .changePassword(request)
+                        .enqueue(object : retrofit2.Callback<Map<String, String>> {
+
+                            override fun onResponse(
+                                call: retrofit2.Call<Map<String, String>>,
+                                response: retrofit2.Response<Map<String, String>>
+                            ) {
+
+                                btnUpdate.isEnabled = true
+                                btnUpdate.text = "Update Password"
+
+                                if (response.isSuccessful) {
+
+                                    MaterialAlertDialogBuilder(this@ChangePasswordActivity)
+                                        .setTitle("Password Changed")
+                                        .setMessage("Your password has been updated successfully.\nPlease login again.")
+                                        .setCancelable(false)
+                                        .setPositiveButton("OK") { _, _ ->
+
+                                            // Clear session
+                                            getSharedPreferences("auth_prefs", MODE_PRIVATE)
+                                                .edit().clear().apply()
+
+                                            getSharedPreferences("profile_data", MODE_PRIVATE)
+                                                .edit().clear().apply()
+
+                                            // Navigate to Login (clear back stack)
+                                            val intent = Intent(this@ChangePasswordActivity, LoginActivity::class.java)
+                                            intent.flags =
+                                                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            startActivity(intent)
+                                        }
+                                        .show()
+
+                                } else {
+
+                                    val errorBody = response.errorBody()?.string()
+
+                                    when {
+                                        errorBody?.contains("WRONG_PASSWORD") == true -> {
+                                            tilOld.error = "Incorrect old password"
+                                        }
+
+                                        errorBody?.contains("BOTH_PASSWORD_SHOULD_BE_SAME") == true -> {
+                                            tilConfirm.error = "Passwords do not match"
+                                        }
+
+                                        errorBody?.contains("ALL_FIELD_REQUIRED") == true -> {
+                                            com.google.android.material.snackbar.Snackbar
+                                                .make(btnUpdate,
+                                                    "All fields are required",
+                                                    com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                                                ).show()
+                                        }
+
+                                        else -> {
+                                            com.google.android.material.snackbar.Snackbar
+                                                .make(btnUpdate,
+                                                    "Unable to change password",
+                                                    com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                                                ).show()
+                                        }
+                                    }
+                                }
+                            }
+
+                            override fun onFailure(
+                                call: retrofit2.Call<Map<String, String>>,
+                                t: Throwable
+                            ) {
+
+                                btnUpdate.isEnabled = true
+                                btnUpdate.text = "Update Password"
+
+                                val msg = when {
+                                    t is java.net.SocketTimeoutException ->
+                                        "Server timeout"
+                                    t is java.net.UnknownHostException ->
+                                        "Server unreachable"
+                                    else ->
+                                        "Something went wrong"
+                                }
+
+                                com.google.android.material.snackbar.Snackbar
+                                    .make(btnUpdate, msg,
+                                        com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                                    ).show()
+                            }
+                        })
                 }
             }
         }

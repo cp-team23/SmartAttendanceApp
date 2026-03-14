@@ -1,9 +1,6 @@
 package com.smartattendance.student.network
 
-import com.smartattendance.student.models.LoginRequest
-import com.smartattendance.student.models.LoginResponse
-import com.smartattendance.student.models.QrAttendancePayload
-import com.smartattendance.student.models.StudentProfileResponse
+import com.smartattendance.student.models.*
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Call
@@ -36,5 +33,19 @@ interface AuthApi {
         @Body payload: QrAttendancePayload
     ): Call<Map<String, String>>
 
+    @PATCH("api/user/change-password")
+    fun changePassword(
+        @Body request: ChangePasswordRequest
+    ): Call<Map<String, String>>
+
+    @GET("/api/student/all-attendance")
+    fun getAllAttendance(): Call<AttendanceResponse>
+
+    @Multipart
+    @PATCH("api/student/scan-face/{attendanceId}")
+    fun scanFace(
+        @Path("attendanceId") attendanceId: String,
+        @Part image: MultipartBody.Part
+    ): Call<Map<String, String>>
 
 }

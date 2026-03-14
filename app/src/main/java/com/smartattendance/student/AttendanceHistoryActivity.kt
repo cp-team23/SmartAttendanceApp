@@ -4,11 +4,16 @@ import android.app.ActivityOptions
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -18,33 +23,35 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.smartattendance.student.adapters.AttendanceAdapter
 import com.smartattendance.student.models.Attendance
+import com.smartattendance.student.models.AttendanceResponse
+import com.smartattendance.student.network.RetrofitClient
 import kotlin.math.roundToInt
 
 class AttendanceHistoryActivity : AppCompatActivity() {
 
     private lateinit var adapter: AttendanceAdapter
-    private lateinit var fullList: List<Attendance>
+    private var fullList: List<Attendance> = emptyList()
 
     private lateinit var recyclerAttendance: RecyclerView
     private lateinit var layoutNoData: View
 
-    // Summary views
+    private lateinit var loadingAttendance: View
     private lateinit var progressAttendance: CircularProgressIndicator
     private lateinit var tvPercentage: TextView
     private lateinit var tvTotal: TextView
     private lateinit var tvPresent: TextView
     private lateinit var tvAbsent: TextView
 
-    // Filter state
     private var selectedMonth = "All Months"
     private var selectedSubject = "All Subjects"
     private var selectedStatus = "All"
+
+    private var subjects: List<String> = listOf("All Subjects")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_attendance_history)
 
-        // Views
         recyclerAttendance = findViewById(R.id.recyclerAttendance)
         layoutNoData = findViewById(R.id.layoutNoData)
 
@@ -54,18 +61,15 @@ class AttendanceHistoryActivity : AppCompatActivity() {
         tvPresent = findViewById(R.id.tvPresent)
         tvAbsent = findViewById(R.id.tvAbsent)
 
+        loadingAttendance = findViewById(R.id.loadingAttendance)
+
         recyclerAttendance.layoutManager = LinearLayoutManager(this)
+        recyclerAttendance.itemAnimator = DefaultItemAnimator()
 
-        // Dummy data (backend later)
-        fullList = listOf(
-            Attendance("DS", "12 Sep 2025", "Present", "September"),
-            Attendance("OS", "13 Sep 2025", "Absent", "September"),
-            Attendance("DBMS", "01 Oct 2025", "Present", "October"),
-            Attendance("CN", "02 Oct 2025", "Absent", "October")
-        )
-
-        adapter = AttendanceAdapter(fullList.toMutableList())
+        adapter = AttendanceAdapter(mutableListOf())
         recyclerAttendance.adapter = adapter
+
+        loadAttendance()
 
         findViewById<FloatingActionButton>(R.id.fabFilter).setOnClickListener {
             showFilterBottomSheet()
@@ -73,7 +77,6 @@ class AttendanceHistoryActivity : AppCompatActivity() {
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
 
-        // Bottom nav (no tab selected)
         bottomNav.menu.setGroupCheckable(0, false, true)
 
         bottomNav.setOnItemSelectedListener { item ->
@@ -96,12 +99,50 @@ class AttendanceHistoryActivity : AppCompatActivity() {
         applyFilters()
     }
 
+    private fun formatDate(date: String): String {
+
+        val parts = date.split("-")
+
+        val year = parts[0]
+        val month = parts[1].toInt()
+        val day = parts[2]
+
+        val monthName = when (month) {
+            1 -> "Jan"
+            2 -> "Feb"
+            3 -> "Mar"
+            4 -> "Apr"
+            5 -> "May"
+            6 -> "Jun"
+            7 -> "Jul"
+            8 -> "Aug"
+            9 -> "Sep"
+            10 -> "Oct"
+            11 -> "Nov"
+            else -> "Dec"
+        }
+
+        return "$day $monthName $year"
+    }
+
+    private fun formatTime(time: String): String {
+
+        val parts = time.split(":")
+        var hour = parts[0].toInt()
+        val minute = parts[1]
+
+        val ampm = if (hour >= 12) "PM" else "AM"
+
+        if (hour > 12) hour -= 12
+        if (hour == 0) hour = 12
+
+        return String.format("%02d:%s %s", hour, minute, ampm)
+    }
+
     private fun showFilterBottomSheet() {
+
         val dialog = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(
-            R.layout.bottomsheet_attendance_filter,
-            null
-        )
+        val view = layoutInflater.inflate(R.layout.bottomsheet_attendance_filter, null)
         dialog.setContentView(view)
 
         val spinnerMonth = view.findViewById<Spinner>(R.id.spinnerMonth)
@@ -111,24 +152,16 @@ class AttendanceHistoryActivity : AppCompatActivity() {
         val monthAdapter = ArrayAdapter(
             this,
             android.R.layout.simple_spinner_dropdown_item,
-            listOf("All Months", "September", "October")
+            listOf("All Months","January","February","March","April","May","June","July","August","September","October","November","December")
         )
         spinnerMonth.adapter = monthAdapter
-        spinnerMonth.setSelection(monthAdapter.getPosition(selectedMonth))
 
         val subjectAdapter = ArrayAdapter(
             this,
             android.R.layout.simple_spinner_dropdown_item,
-            listOf("All Subjects", "DS", "OS", "DBMS", "CN")
+            subjects
         )
         spinnerSubject.adapter = subjectAdapter
-        spinnerSubject.setSelection(subjectAdapter.getPosition(selectedSubject))
-
-        when (selectedStatus) {
-            "Present" -> chipGroupStatus.check(R.id.chipPresent)
-            "Absent" -> chipGroupStatus.check(R.id.chipAbsent)
-            else -> chipGroupStatus.check(R.id.chipAll)
-        }
 
         view.findViewById<View>(R.id.btnApplyFilter).setOnClickListener {
 
@@ -148,7 +181,74 @@ class AttendanceHistoryActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun loadAttendance() {
+
+        loadingAttendance.visibility = View.VISIBLE
+        recyclerAttendance.visibility = View.GONE
+
+        RetrofitClient.create(this).getAllAttendance()
+            .enqueue(object : Callback<AttendanceResponse> {
+
+                override fun onResponse(
+                    call: Call<AttendanceResponse>,
+                    response: Response<AttendanceResponse>
+                ) {
+
+                    loadingAttendance.visibility = View.GONE
+                    recyclerAttendance.visibility = View.VISIBLE
+
+                    if (!response.isSuccessful || response.body() == null) return
+
+                    val backendList = response.body()!!.response
+                        .sortedByDescending { it.attendanceDate }
+
+                    subjects = listOf("All Subjects") +
+                            backendList.map { it.subjectName }.distinct()
+
+                    fullList = backendList.map {
+
+                        val month = it.attendanceDate.substring(5,7).toInt()
+
+                        val monthName = when(month){
+                            1 -> "January"
+                            2 -> "February"
+                            3 -> "March"
+                            4 -> "April"
+                            5 -> "May"
+                            6 -> "June"
+                            7 -> "July"
+                            8 -> "August"
+                            9 -> "September"
+                            10 -> "October"
+                            11 -> "November"
+                            else -> "December"
+                        }
+
+                        Attendance(
+                            subject = it.subjectName,
+                            date = formatDate(it.attendanceDate) + " • " + formatTime(it.attendanceTime),
+                            status = if(it.status == "PRESENT") "Present" else "Absent",
+                            month = monthName,
+                            teacher = it.teacherName
+                        )
+                    }
+
+                    adapter.updateData(fullList)
+                    applyFilters()
+                }
+
+                override fun onFailure(call: Call<AttendanceResponse>, t: Throwable) {
+                    Toast.makeText(
+                        this@AttendanceHistoryActivity,
+                        "Failed to load attendance",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            })
+    }
+
     private fun applyFilters() {
+
         val filtered = fullList.filter {
             (selectedMonth == "All Months" || it.month == selectedMonth) &&
                     (selectedSubject == "All Subjects" || it.subject == selectedSubject) &&
@@ -157,7 +257,6 @@ class AttendanceHistoryActivity : AppCompatActivity() {
 
         adapter.updateData(filtered)
 
-        // No data handling
         if (filtered.isEmpty()) {
             recyclerAttendance.visibility = View.GONE
             layoutNoData.visibility = View.VISIBLE
@@ -168,7 +267,9 @@ class AttendanceHistoryActivity : AppCompatActivity() {
 
         updateSummary(filtered)
     }
+
     private fun updateSummary(list: List<Attendance>) {
+
         val total = list.size
         val present = list.count { it.status == "Present" }
         val absent = list.count { it.status == "Absent" }
@@ -182,11 +283,10 @@ class AttendanceHistoryActivity : AppCompatActivity() {
         tvAbsent.text = "Absent\n$absent"
         tvPercentage.text = "$percentage%"
 
-        // 🎨 Dynamic color
         val color = when {
-            percentage >= 75 -> "#4CAF50"   // Green
-            percentage >= 50 -> "#FFC107"   // Yellow
-            else -> "#F44336"               // Red
+            percentage >= 75 -> "#4CAF50"
+            percentage >= 50 -> "#FFC107"
+            else -> "#F44336"
         }
 
         val parsedColor = Color.parseColor(color)
@@ -194,7 +294,9 @@ class AttendanceHistoryActivity : AppCompatActivity() {
         progressAttendance.setIndicatorColor(parsedColor)
         tvPercentage.setTextColor(parsedColor)
 
-        progressAttendance.setProgressCompat(percentage, true)
+        progressAttendance.setProgressCompat(0,false)
+        progressAttendance.postDelayed({
+            progressAttendance.setProgressCompat(percentage,true)
+        },200)
     }
-
 }

@@ -25,10 +25,12 @@ class AttendanceAdapter(
     }
 
     override fun onBindViewHolder(holder: AttendanceViewHolder, position: Int) {
+
         val item = list[position]
 
         holder.tvSubject.text = item.subject
         holder.tvDate.text = item.date
+        holder.tvTeacher.text = item.teacher
         holder.tvStatus.text = item.status
 
         when (item.status) {
@@ -40,8 +42,10 @@ class AttendanceAdapter(
     override fun getItemCount(): Int = list.size
 
     class AttendanceViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+
         val tvSubject: TextView = itemView.findViewById(R.id.tvSubject)
         val tvDate: TextView = itemView.findViewById(R.id.tvDate)
+        val tvTeacher: TextView = itemView.findViewById(R.id.tvTeacher)
         val tvStatus: TextView = itemView.findViewById(R.id.tvStatus)
     }
 }

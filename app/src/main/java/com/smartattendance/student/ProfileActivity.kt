@@ -9,12 +9,17 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.google.android.material.snackbar.Snackbar
+import androidx.core.content.ContextCompat
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.imageview.ShapeableImageView
 import com.smartattendance.student.models.StudentProfileResponse
@@ -47,6 +52,10 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var tvClass: TextView
     private lateinit var tvBatch: TextView
     private val BASE_URL = "https://mdj4kwmp-8080.inc1.devtunnels.ms"
+    private lateinit var swipeRefresh: SwipeRefreshLayout
+    private lateinit var profileImageLoader: View
+    private var shouldRefresh = false
+    private lateinit var viewRejectDot: View
 
 
     private var pendingPhotoUri: Uri? = null
@@ -81,20 +90,32 @@ class ProfileActivity : AppCompatActivity() {
 
         initViews()
 
-        loadSavedProfile()     // show cached data instantly
-        loadStudentProfile()   // always refresh latest from server
+        loadSavedProfile()
+        restoreProfileImage()
+
+        loadStudentProfile()
+
 
 
         setupBottomNavigation()
         setupButtons()
 
-        restoreProfileImage()
+        val rejected = getSharedPreferences("profile_prefs", MODE_PRIVATE)
+            .getBoolean("photo_rejected", false)
+
+        if (rejected) {
+            viewRejectDot.visibility = View.VISIBLE
+        }
+
         if (isPhotoPending()) showPendingUI()
     }
 
     override fun onResume() {
         super.onResume()
-        loadStudentProfile()
+        if (shouldRefresh) {
+            loadStudentProfile()
+            shouldRefresh = false
+        }
     }
 
     private fun initViews() {
@@ -112,7 +133,14 @@ class ProfileActivity : AppCompatActivity() {
         tvYear = findViewById(R.id.tvYear)
         tvClass = findViewById(R.id.tvClass)
         tvBatch = findViewById(R.id.tvBatch)
+        swipeRefresh = findViewById(R.id.swipeRefresh)
+        profileImageLoader = findViewById(R.id.profileImageLoader)
+        viewRejectDot = findViewById(R.id.viewRejectDot)
 
+        swipeRefresh.setOnRefreshListener {
+            loadStudentProfile()
+        }
+        imgProfile.setImageResource(R.drawable.profile_temp)
         imgProfile.setOnClickListener { handleProfileClick() }
         imgCameraIcon.setOnClickListener { handleProfileClick() }
         tvPendingBadge.setOnClickListener {
@@ -125,7 +153,12 @@ class ProfileActivity : AppCompatActivity() {
 
     // ================= PROFILE API =================
 
-    private fun loadStudentProfile() {
+    private fun loadStudentProfile(showLoader: Boolean = false) {
+
+        if (showLoader) {
+            swipeRefresh.isRefreshing = true
+        }
+
         RetrofitClient.create(this).getStudentProfile()
             .enqueue(object : Callback<StudentProfileResponse> {
 
@@ -133,6 +166,9 @@ class ProfileActivity : AppCompatActivity() {
                     call: Call<StudentProfileResponse>,
                     response: Response<StudentProfileResponse>
                 ) {
+
+                    swipeRefresh.isRefreshing = false
+
                     if (!response.isSuccessful || response.body() == null) return
 
                     val p = response.body()!!.response
@@ -143,6 +179,8 @@ class ProfileActivity : AppCompatActivity() {
                 }
 
                 override fun onFailure(call: Call<StudentProfileResponse>, t: Throwable) {
+
+                    swipeRefresh.isRefreshing = false
 
                     val msg = when {
                         t is java.net.SocketTimeoutException ->
@@ -158,9 +196,12 @@ class ProfileActivity : AppCompatActivity() {
                             "Something went wrong"
                     }
 
-                    Toast.makeText(this@ProfileActivity, msg, Toast.LENGTH_LONG).show()
+                    Snackbar.make(
+                        findViewById(android.R.id.content),
+                        msg,
+                        Snackbar.LENGTH_LONG
+                    ).show()
                 }
-
             })
     }
 
@@ -178,23 +219,29 @@ class ProfileActivity : AppCompatActivity() {
         tvClass.text = p.className
         tvBatch.text = p.batch
 
+        val prefs = getSharedPreferences("profile_data", MODE_PRIVATE)
+
         // ================= IMAGE =================
+        // ALWAYS show approved image in profile circle
 
         if (!p.curImage.isNullOrEmpty() && p.curImage != "/uploads/null") {
 
-            val imageUrl =
-                "https://mdj4kwmp-8080.inc1.devtunnels.ms" + p.curImage
+            val imageUrl = BASE_URL + p.curImage
 
             Glide.with(this)
                 .load(imageUrl)
-                .placeholder(R.drawable.profile_temp)
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .placeholder(imgProfile.drawable)
                 .error(R.drawable.profile_temp)
+                .dontAnimate()
                 .into(imgProfile)
 
         } else {
             imgProfile.setImageResource(R.drawable.profile_temp)
         }
 
+        // Reset camera icon color
+        imgCameraIcon.clearColorFilter()
 
         // ================= PENDING STATUS =================
 
@@ -203,44 +250,58 @@ class ProfileActivity : AppCompatActivity() {
                     p.newImage != "/uploads/null"
 
         if (isPending) {
+
             showPendingUI()
             savePhotoPending(true)
+
+            prefs.edit()
+                .putBoolean("wasPending", true)
+                .putString("lastApprovedImage", p.curImage)
+                .apply()
+
         } else {
+
             hidePendingUI()
             savePhotoPending(false)
+
+            // clear pending uri after approval or cancel
             clearSavedPhotoUri()
+            pendingPhotoUri = null
         }
 
-
-        val prefs = getSharedPreferences("profile_data", MODE_PRIVATE)
+        // ================= REJECTION DETECTION =================
 
         val oldPending = prefs.getBoolean("wasPending", false)
         val oldApprovedImage = prefs.getString("lastApprovedImage", null)
 
-        val nowPending = !p.newImage.isNullOrEmpty() && p.newImage != "/uploads/null"
+        val nowPending =
+            !p.newImage.isNullOrEmpty() &&
+                    p.newImage != "/uploads/null"
+
         val approvedChanged = oldApprovedImage != p.curImage
 
-// ⭐ REJECTION DETECTED
+        // REJECTED if pending was there but now removed and approved image didn't change
         if (oldPending && !nowPending && !approvedChanged) {
 
-            Toast.makeText(
-                this,
-                "Photo rejected. Please upload a clear photo.",
-                Toast.LENGTH_LONG
-            ).show()
-
-            // ⭐ prevent showing again
-            prefs.edit()
-                .putBoolean("wasPending", nowPending)
-                .putString("lastApprovedImage", p.curImage)
+            getSharedPreferences("profile_prefs", MODE_PRIVATE)
+                .edit()
+                .putBoolean("photo_rejected", true)
                 .apply()
 
+            viewRejectDot.visibility = View.VISIBLE
+
+            Snackbar.make(
+                findViewById(android.R.id.content),
+                "Photo rejected. Tap camera to reupload.",
+                Snackbar.LENGTH_LONG
+            ).show()
         }
 
-
+        prefs.edit()
+            .putBoolean("wasPending", nowPending)
+            .putString("lastApprovedImage", p.curImage)
+            .apply()
     }
-
-
     // ================= LOCAL STORAGE =================
 
     private fun saveProfile(p: StudentData) {
@@ -284,7 +345,7 @@ class ProfileActivity : AppCompatActivity() {
         if (!imageUrl.isNullOrEmpty() && imageUrl != "/uploads/null") {
             Glide.with(this)
                 .load(BASE_URL + imageUrl)
-                .placeholder(R.drawable.profile_temp)
+                .dontAnimate()
                 .error(R.drawable.profile_temp)
                 .into(imgProfile)
         }
@@ -334,8 +395,11 @@ class ProfileActivity : AppCompatActivity() {
 
     private fun uploadProfileImage(uri: Uri) {
 
-        val file = File(uri.path!!)
+        profileImageLoader.visibility = View.VISIBLE
+        imgProfile.alpha = 0.5f
+        imgProfile.isEnabled = false
 
+        val file = File(uri.path!!)
         val requestFile =
             file.asRequestBody("image/jpeg".toMediaTypeOrNull())
 
@@ -350,20 +414,32 @@ class ProfileActivity : AppCompatActivity() {
                     call: Call<ResponseBody>,
                     response: Response<ResponseBody>
                 ) {
-                    Toast.makeText(this@ProfileActivity,
+
+                    profileImageLoader.visibility = View.GONE
+                    imgProfile.alpha = 1f
+                    imgProfile.isEnabled = true
+
+                    Snackbar.make(
+                        findViewById(android.R.id.content),
                         "Photo sent for approval",
-                        Toast.LENGTH_SHORT).show()
+                        Snackbar.LENGTH_LONG
+                    ).show()
                 }
 
                 override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                    Toast.makeText(this@ProfileActivity,
+
+                    profileImageLoader.visibility = View.GONE
+                    imgProfile.alpha = 1f
+                    imgProfile.isEnabled = true
+
+                    Snackbar.make(
+                        findViewById(android.R.id.content),
                         "Upload failed. Check connection.",
-                        Toast.LENGTH_SHORT).show()
+                        Snackbar.LENGTH_LONG
+                    ).show()
                 }
             })
     }
-
-
 
     // ================= NAVIGATION =================
 
@@ -386,15 +462,26 @@ class ProfileActivity : AppCompatActivity() {
     // ================= BUTTONS =================
 
     private fun setupButtons() {
+
         findViewById<MaterialButton>(R.id.btnChangePassword).setOnClickListener {
             startActivity(Intent(this, ChangePasswordActivity::class.java))
         }
 
-        findViewById<MaterialButton>(R.id.btnLogout).setOnClickListener {
+        val btnLogout = findViewById<MaterialButton>(R.id.btnLogout)
+
+        btnLogout.setOnClickListener {
+
             MaterialAlertDialogBuilder(this)
                 .setTitle("Logout")
                 .setMessage("Are you sure you want to logout?")
-                .setPositiveButton("Logout") { _, _ -> logout() }
+                .setPositiveButton("Logout") { _, _ ->
+
+                    // 🔒 Disable button AFTER confirmation
+                    btnLogout.isEnabled = false
+                    btnLogout.text = "Logging out..."
+
+                    logout()
+                }
                 .setNegativeButton("Cancel", null)
                 .show()
         }
@@ -426,21 +513,36 @@ class ProfileActivity : AppCompatActivity() {
     // ================= IMAGE HANDLING =================
 
     private fun handleProfileClick() {
-        if (isPhotoPending()) showPendingBottomSheet()
-        else pickImage.launch("image/*")
+
+        val rejected = getSharedPreferences("profile_prefs", MODE_PRIVATE)
+            .getBoolean("photo_rejected", false)
+
+        if (rejected) {
+            showRejectionBottomSheet()
+            return
+        }
+
+        if (isPhotoPending()) {
+            showPendingBottomSheet()
+        } else {
+            pickImage.launch("image/*")
+        }
     }
 
     private fun startCrop(uri: Uri) {
         val dest = Uri.fromFile(File(cacheDir, "crop.jpg"))
 
         val options = UCrop.Options().apply {
+
             setCircleDimmedLayer(true)
             setShowCropFrame(false)
             setShowCropGrid(false)
             setToolbarTitle("Edit Photo")
             setToolbarColor(Color.parseColor("#1B263B"))
             setStatusBarColor(Color.parseColor("#1B263B"))
-            setRootViewBackgroundColor(Color.BLACK)
+            setToolbarWidgetColor(Color.WHITE)
+            setActiveControlsWidgetColor(Color.parseColor("#1B263B"))
+            setRootViewBackgroundColor(Color.parseColor("#121212"))
         }
 
         val intent = UCrop.of(uri, dest)
@@ -452,8 +554,18 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun showPendingUI() {
+
         imgCameraIcon.visibility = View.GONE
+
+        tvPendingBadge.scaleX = 0f
+        tvPendingBadge.scaleY = 0f
         tvPendingBadge.visibility = View.VISIBLE
+
+        tvPendingBadge.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(200)
+            .start()
     }
 
     private fun hidePendingUI() {
@@ -461,7 +573,46 @@ class ProfileActivity : AppCompatActivity() {
         tvPendingBadge.visibility = View.GONE
     }
 
+    private fun showRejectionBottomSheet() {
 
+        val sheet = BottomSheetDialog(this)
+        val v = layoutInflater.inflate(R.layout.bottomsheet_pending_photo, null)
+        sheet.setContentView(v)
+
+        val btnReupload = v.findViewById<MaterialButton>(R.id.btnReupload)
+        val btnCancel = v.findViewById<MaterialButton>(R.id.btnCancelChange)
+
+        btnReupload.text = "Reupload Photo"
+        btnCancel.text = "Dismiss"
+
+        btnReupload.setOnClickListener {
+            sheet.dismiss()
+
+            // clear rejection state
+            getSharedPreferences("profile_prefs", MODE_PRIVATE)
+                .edit()
+                .putBoolean("photo_rejected", false)
+                .apply()
+
+            viewRejectDot.visibility = View.GONE
+
+            pickImage.launch("image/*")
+        }
+
+        btnCancel.setOnClickListener {
+            sheet.dismiss()
+
+            // clear rejection state
+            getSharedPreferences("profile_prefs", MODE_PRIVATE)
+                .edit()
+                .putBoolean("photo_rejected", false)
+                .apply()
+
+            viewRejectDot.visibility = View.GONE
+        }
+
+        sheet.show()
+    }
     private fun showPendingBottomSheet() {
 
         val sheet = BottomSheetDialog(this)
@@ -527,8 +678,6 @@ class ProfileActivity : AppCompatActivity() {
                 })
         }
 
-
-
         btnClose.setOnClickListener { sheet.dismiss() }
 
         sheet.show()
@@ -559,10 +708,9 @@ class ProfileActivity : AppCompatActivity() {
     private fun restoreProfileImage() {
         val s = getSharedPreferences("profile_prefs", MODE_PRIVATE)
             .getString("photo_uri", null)
-        s?.let {
-            val uri = Uri.parse(it)
-            imgProfile.setImageURI(uri)
-            pendingPhotoUri = uri
+
+        if (s != null) {
+            pendingPhotoUri = Uri.parse(s)
         }
     }
 }
