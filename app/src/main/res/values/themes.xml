@@ -1,11 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SmartAttendance"
-        parent="Theme.MaterialComponents.Light.NoActionBar">
 
+    <!-- Main app theme — all activities use this — NOT changed -->
+    <style name="Theme.SmartAttendance" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/primary_blue</item>
         <item name="colorOnPrimary">@android:color/white</item>
-
-        <!-- Input focus color (THIS REMOVES PURPLE) -->
         <item name="colorControlActivated">@color/primary_blue</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <!-- NO windowIsTranslucent here — keeps all screens normal -->
     </style>
+
+    <!-- Splash theme — ONLY used by SplashActivity -->
+    <style name="Theme.Splash" parent="Theme.AppCompat.Light.NoActionBar">
+
+        <!-- Removes white flash before SplashActivity loads -->
+        <item name="android:windowIsTranslucent">true</item>
+
+        <!-- Background color same as your splash screen -->
+        <item name="android:windowBackground">@color/splash_bg</item>
+
+        <!-- Full screen — no action bar, no title -->
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowShowWallpaper">false</item>
+
+    </style>
+
 </resources>

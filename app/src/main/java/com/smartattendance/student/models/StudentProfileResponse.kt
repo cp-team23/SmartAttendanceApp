@@ -15,6 +15,6 @@ data class StudentData(
     val semester: String,
     val className: String,
     val batch: String,
-    val newImage : String,
+    val newImage : String?,
     val curImage: String?
 )

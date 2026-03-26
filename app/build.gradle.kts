@@ -51,6 +51,7 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation(libs.androidx.core.ktx)
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("com.github.yalantis:ucrop:2.2.8")
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
