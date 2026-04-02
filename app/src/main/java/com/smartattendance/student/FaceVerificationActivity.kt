@@ -43,11 +43,10 @@ class FaceVerificationActivity : AppCompatActivity() {
     private var cameraReady     = false
     private var lastCaptureTime = 0L
 
-    // FIX: Timeout handler — if face never detected, show error after 45 seconds
     private val timeoutHandler  = Handler(Looper.getMainLooper())
     private val timeoutRunnable = Runnable {
         if (!isCaptured && !isFinishing) {
-            showErrorDialog(
+            showFaceErrorDialog(
                 "Face Not Detected",
                 "Unable to detect your face. Please ensure good lighting and try again."
             )
@@ -64,12 +63,9 @@ class FaceVerificationActivity : AppCompatActivity() {
 
         setupVerifyingOverlay()
         startCamera()
-
-        // FIX: Start 45-second timeout
         timeoutHandler.postDelayed(timeoutRunnable, 45_000)
     }
 
-    // FIX: Release camera when app backgrounds (phone call etc.)
     override fun onPause() {
         super.onPause()
         if (::cameraProvider.isInitialized) cameraProvider.unbindAll()
@@ -77,12 +73,13 @@ class FaceVerificationActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        timeoutHandler.removeCallbacks(timeoutRunnable) // FIX: cancel timeout on exit
+        timeoutHandler.removeCallbacks(timeoutRunnable)
     }
 
     private fun setupVerifyingOverlay() {
         val root = findViewById<FrameLayout>(android.R.id.content)
-        verifyingOverlay = LayoutInflater.from(this).inflate(R.layout.overlay_verifying, root, false)
+        verifyingOverlay = LayoutInflater.from(this)
+            .inflate(R.layout.overlay_verifying, root, false)
         root.addView(verifyingOverlay)
         verifyingOverlay.visibility = View.GONE
     }
@@ -90,6 +87,7 @@ class FaceVerificationActivity : AppCompatActivity() {
     private fun showVerifyingOverlay() { runOnUiThread { verifyingOverlay.visibility = View.VISIBLE } }
     private fun hideVerifyingOverlay() { runOnUiThread { verifyingOverlay.visibility = View.GONE } }
 
+    // ── Camera ────────────────────────────────────────────────────────
     private fun startCamera() {
         val providerFuture = ProcessCameraProvider.getInstance(this)
 
@@ -129,7 +127,10 @@ class FaceVerificationActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun handleFaceFrame(face: Face?, imageWidth: Int, imageHeight: Int, hint: String, valid: Boolean) {
+    // ── Face frame handling ───────────────────────────────────────────
+    private fun handleFaceFrame(
+        face: Face?, imageWidth: Int, imageHeight: Int, hint: String, valid: Boolean
+    ) {
         if (face == null) {
             runOnUiThread { faceOverlay.update(null, "No face detected", false) }
             return
@@ -150,20 +151,20 @@ class FaceVerificationActivity : AppCompatActivity() {
         val now = System.currentTimeMillis()
         if (cameraReady && finalValid && !isCaptured && now - lastCaptureTime > 1500) {
             lastCaptureTime = now
-            isCaptured = true
-            timeoutHandler.removeCallbacks(timeoutRunnable) // FIX: cancel timeout on success
+            isCaptured      = true
+            timeoutHandler.removeCallbacks(timeoutRunnable)
             runOnUiThread { faceOverlay.clear() }
             captureAndCrop()
         }
     }
 
     private fun mapFaceToScreen(face: Face, imageWidth: Int, imageHeight: Int): RectF {
-        val scaleX  = previewView.width.toFloat()  / imageWidth
-        val scaleY  = previewView.height.toFloat() / imageHeight
-        val box     = face.boundingBox
-        val centerX = box.centerX() * scaleX
-        val centerY = box.centerY() * scaleY
-        val faceWidth  = box.width()  * scaleX
+        val scaleX     = previewView.width.toFloat()  / imageWidth
+        val scaleY     = previewView.height.toFloat() / imageHeight
+        val box        = face.boundingBox
+        val centerX    = box.centerX() * scaleX
+        val centerY    = box.centerY() * scaleY
+        val faceWidth  = box.width()   * scaleX
         val faceHeight = faceWidth * 1.25f
         val left   = previewView.width - (centerX + faceWidth / 2)
         val right  = previewView.width - (centerX - faceWidth / 2)
@@ -179,6 +180,7 @@ class FaceVerificationActivity : AppCompatActivity() {
         return (nx * nx + ny * ny) <= 1f
     }
 
+    // ── Capture ───────────────────────────────────────────────────────
     private fun captureAndCrop() {
         val fullFile = File(cacheDir, "full_${System.currentTimeMillis()}.jpg")
 
@@ -189,13 +191,13 @@ class FaceVerificationActivity : AppCompatActivity() {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     cameraProvider.unbindAll()
                     val croppedFile = cropToOval(fullFile)
-                    fullFile.delete() // FIX: delete original full-size file immediately
+                    fullFile.delete()
                     sendImageToBackend(croppedFile)
                 }
                 override fun onError(exception: ImageCaptureException) {
                     isCaptured = false
                     runOnUiThread { faceOverlay.update(null, "No face detected", false) }
-                    timeoutHandler.postDelayed(timeoutRunnable, 45_000) // restart timeout
+                    timeoutHandler.postDelayed(timeoutRunnable, 45_000)
                 }
             }
         )
@@ -203,9 +205,10 @@ class FaceVerificationActivity : AppCompatActivity() {
 
     private fun cropToOval(original: File): File {
         val rawBitmap = BitmapFactory.decodeFile(original.absolutePath)
-        val exif      = ExifInterface(original.absolutePath)
-        val exifOrientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-
+        val exif = ExifInterface(original.absolutePath)
+        val exifOrientation = exif.getAttributeInt(
+            ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL
+        )
         val rotateDegrees = when (exifOrientation) {
             ExifInterface.ORIENTATION_ROTATE_90  -> 90f
             ExifInterface.ORIENTATION_ROTATE_180 -> 180f
@@ -235,15 +238,17 @@ class FaceVerificationActivity : AppCompatActivity() {
             (oval.bottom * scaleY).coerceAtMost(bitmap.height.toFloat())
         )
 
-        val cropped = Bitmap.createBitmap(bitmap, safe.left.toInt(), safe.top.toInt(), safe.width().toInt(), safe.height().toInt())
+        val cropped  = Bitmap.createBitmap(
+            bitmap, safe.left.toInt(), safe.top.toInt(),
+            safe.width().toInt(), safe.height().toInt()
+        )
         val resized  = Bitmap.createScaledBitmap(cropped, 256, 256, true)
-
         val outputFile = File(cacheDir, "face_${System.currentTimeMillis()}.jpg")
         outputFile.outputStream().use { resized.compress(Bitmap.CompressFormat.JPEG, 90, it) }
-
         return outputFile
     }
 
+    // ── Backend call ──────────────────────────────────────────────────
     private fun sendImageToBackend(file: File) {
         showVerifyingOverlay()
 
@@ -254,9 +259,12 @@ class FaceVerificationActivity : AppCompatActivity() {
             .scanFace(attendanceId, body)
             .enqueue(object : Callback<Map<String, String>> {
 
-                override fun onResponse(call: Call<Map<String, String>>, response: Response<Map<String, String>>) {
+                override fun onResponse(
+                    call: Call<Map<String, String>>,
+                    response: Response<Map<String, String>>
+                ) {
                     hideVerifyingOverlay()
-                    file.delete() // FIX: delete cropped face file after upload
+                    file.delete()
 
                     if (response.isSuccessful) {
                         onAttendanceSuccess()
@@ -264,60 +272,149 @@ class FaceVerificationActivity : AppCompatActivity() {
                     }
 
                     val error = response.errorBody()?.string() ?: ""
+
                     when {
-                        error.contains("FACE_NOT_MATCHED") -> showFaceNotMatchedDialog()
-                        error.contains("QR_EXPIRED")       -> showErrorDialog("QR Expired", "The QR code has expired. Please scan a new one.")
-                        error.contains("SCAN_QR_AGAIN")    -> showErrorDialog("Scan Again", "Please scan the QR code again.")
-                        else                               -> showErrorDialog("Verification Failed", "Something went wrong. Please try again.")
+                        // ── QR problems → go back to QR scanner ──────────────
+                        error.contains("QR_EXPIRED") -> {
+                            showQrErrorDialog(
+                                "QR Code Expired",
+                                "This QR code has expired. Please scan the new QR code shown by your teacher."
+                            )
+                        }
+                        error.contains("SCAN_QR_AGAIN") -> {
+                            showQrErrorDialog(
+                                "Scan QR Again",
+                                "Please go back and scan the QR code again."
+                            )
+                        }
+
+                        // ── Face problems → retry face scan ───────────────────
+                        error.contains("FACE_NOT_MATCHED") -> {
+                            showFaceNotMatchedDialog()
+                        }
+
+                        // ── Unknown error → retry face scan ───────────────────
+                        else -> {
+                            showFaceErrorDialog(
+                                "Verification Failed",
+                                "Something went wrong. Please try again."
+                            )
+                        }
                     }
                 }
 
                 override fun onFailure(call: Call<Map<String, String>>, t: Throwable) {
                     hideVerifyingOverlay()
-                    file.delete() // FIX: delete even on failure
-                    showErrorDialog("Network Error", "Check your connection and try again.")
+                    file.delete()
+                    // Network error — retry face scan (QR is still valid)
+                    showFaceErrorDialog(
+                        "Network Error",
+                        "Check your internet connection and try again."
+                    )
                 }
             })
     }
 
-    private fun showFaceNotMatchedDialog() {
-        runOnUiThread {
-            MaterialAlertDialogBuilder(this)
-                .setTitle("Face not matched")
-                .setMessage("Please try again with proper lighting and alignment.")
-                .setCancelable(false)
-                .setPositiveButton("Try Again") { dialog, _ -> dialog.dismiss(); resetAndRestart() }
-                .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss(); goToHome() }
-                .show()
-        }
-    }
+    // ── Dialogs ───────────────────────────────────────────────────────
 
-    private fun showErrorDialog(title: String, message: String) {
+    /**
+     * QR-related error.
+     * "Scan Again" → goes to QrScanActivity (NOT face retry)
+     * "Cancel"     → goes to Home
+     */
+    private fun showQrErrorDialog(title: String, message: String) {
         runOnUiThread {
             MaterialAlertDialogBuilder(this)
                 .setTitle(title)
                 .setMessage(message)
                 .setCancelable(false)
-                .setPositiveButton("Try Again") { dialog, _ -> dialog.dismiss(); resetAndRestart() }
-                .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss(); goToHome() }
+                .setPositiveButton("Scan QR Again") { dialog, _ ->
+                    dialog.dismiss()
+                    goToQrScan()   // ← correct: back to QR scanner
+                }
+                .setNegativeButton("Cancel") { dialog, _ ->
+                    dialog.dismiss()
+                    goToHome()
+                }
                 .show()
         }
     }
 
-    private fun resetAndRestart() {
+    /**
+     * Face not matched by InsightFace on backend.
+     * "Try Again" → retries face capture in this activity
+     * "Cancel"    → goes to Home
+     */
+    private fun showFaceNotMatchedDialog() {
+        runOnUiThread {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Face Not Matched")
+                .setMessage("Your face did not match. Please try again with good lighting and look straight at the camera.")
+                .setCancelable(false)
+                .setPositiveButton("Try Again") { dialog, _ ->
+                    dialog.dismiss()
+                    resetAndRestartFace()  // ← correct: retry face scan
+                }
+                .setNegativeButton("Cancel") { dialog, _ ->
+                    dialog.dismiss()
+                    goToHome()
+                }
+                .show()
+        }
+    }
+
+    /**
+     * Face detection / network / generic error.
+     * "Try Again" → retries face capture in this activity
+     * "Cancel"    → goes to Home
+     */
+    private fun showFaceErrorDialog(title: String, message: String) {
+        runOnUiThread {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setCancelable(false)
+                .setPositiveButton("Try Again") { dialog, _ ->
+                    dialog.dismiss()
+                    resetAndRestartFace()  // ← correct: retry face scan
+                }
+                .setNegativeButton("Cancel") { dialog, _ ->
+                    dialog.dismiss()
+                    goToHome()
+                }
+                .show()
+        }
+    }
+
+    // ── Navigation ────────────────────────────────────────────────────
+
+    /** QR problem → go back to QR scanner, clear this activity from stack */
+    private fun goToQrScan() {
+        startActivity(
+            Intent(this, QrScanActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
+        finish()
+    }
+
+    /** Any cancel → go to Home */
+    private fun goToHome() {
+        startActivity(
+            Intent(this, HomeActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
+        finish()
+    }
+
+    /** Face problem → reset state and restart face camera in this activity */
+    private fun resetAndRestartFace() {
         isCaptured      = false
         cameraReady     = false
         lastCaptureTime = 0L
         faceOverlay.update(null, "No face detected", false)
         startCamera()
         timeoutHandler.removeCallbacks(timeoutRunnable)
-        timeoutHandler.postDelayed(timeoutRunnable, 45_000) // restart timeout
-    }
-
-    private fun goToHome() {
-        startActivity(Intent(this, HomeActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
-        finish()
+        timeoutHandler.postDelayed(timeoutRunnable, 45_000)
     }
 
     private fun onAttendanceSuccess() {

@@ -17,8 +17,8 @@
     <!-- Change @drawable/ic_logo to your actual logo drawable name -->
     <ImageView
         android:id="@+id/imgLogo"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
         android:src="@drawable/logo"
         android:contentDescription="App Logo" />
 

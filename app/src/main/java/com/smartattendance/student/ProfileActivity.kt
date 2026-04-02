@@ -88,6 +88,7 @@ class ProfileActivity : AppCompatActivity() {
 
         if (rejected) viewRejectDot.visibility = View.VISIBLE
         if (isPhotoPending()) showPendingUI()
+
     }
 
     override fun onResume() {
